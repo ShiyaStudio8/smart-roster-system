@@ -1,0 +1,165 @@
+/* static/style.css - Neo-Glass Cyberpunk Executive Theme */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg-main: #030712;
+    --bg-card: rgba(15, 23, 42, 0.7);
+    --bg-card-hover: rgba(30, 41, 59, 0.85);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(99, 102, 241, 0.4);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-glow: 0 0 30px -10px rgba(99, 102, 241, 0.35);
+}
+
+body {
+    background-color: var(--bg-main);
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-size: 0.85rem; /* Compact overall text */
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+}
+
+/* Glassmorphism Navbar */
+.navbar-custom {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Compact Glass Cards */
+.card-custom {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transition: all 0.25s ease;
+}
+.card-custom:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-glow);
+    box-shadow: var(--accent-glow);
+}
+
+/* Compact Tables & Sticky Header/Column */
+.table-dark-custom {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-main);
+    --bs-table-border-color: var(--border-color);
+    font-size: 0.78rem; /* Smaller matrix text */
+    white-space: nowrap;
+}
+
+.table-dark-custom th {
+    background-color: #0b0f19 !important;
+    color: #cbd5e1;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    padding: 10px 12px !important;
+    border-bottom: 2px solid var(--border-color) !important;
+}
+
+.table-dark-custom td {
+    padding: 8px 12px !important;
+}
+
+/* Sticky First Column */
+.table-dark-custom th:first-child,
+.table-dark-custom td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #0f172a;
+    z-index: 5;
+    border-right: 2px solid var(--border-color);
+}
+
+/* Compact Navigation Pills */
+.nav-pills .nav-link {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 6px 16px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+.nav-pills .nav-link:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.06);
+}
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+}
+
+/* Conflict Alert Banner */
+.conflict-banner {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(127, 29, 29, 0.2));
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    font-size: 0.82rem;
+}
+
+/* Small Badges */
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+
+/* Compact Modals */
+.modal-dark {
+    background-color: #0f172a;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+.modal-dark .form-control, 
+.modal-dark .form-select {
+    background-color: #0b0f19;
+    border: 1px solid #1e293b;
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+}
+.modal-dark .form-control:focus, 
+.modal-dark .form-select:focus {
+    background-color: #0b0f19;
+    color: #fff;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+}
+
+/* Buttons */
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    transition: all 0.2s ease;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}

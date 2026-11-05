@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roster Command Center | DataStraw Assessment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom py-3 mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold text-white fs-4" href="/">
+                <i class="fa-solid fa-bolt text-primary me-2"></i> SmartRoster <span class="badge bg-primary fs-6 ms-2">DataStraw Engine</span>
+            </a>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#leaveModal">
+                    <i class="fa-solid fa-calendar-plus me-1"></i> Request Leave
+                </button>
+                <button class="btn btn-warning btn-sm rounded-pill px-3 fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#manualOverrideModal">
+                    <i class="fa-solid fa-sliders me-1"></i> Manual Override
+                </button>
+                <button class="btn btn-info btn-sm rounded-pill px-3 fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                    <i class="fa-solid fa-user-plus me-1"></i> Add Employee
+                </button>
+                <button class="btn btn-secondary btn-sm rounded-pill px-3 fw-semibold text-white" data-bs-toggle="modal" data-bs-target="#addBrandModal">
+                    <i class="fa-solid fa-store me-1"></i> Add Brand
+                </button>
+                <a href="/export-csv" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                    <i class="fa-solid fa-file-excel me-1"></i> Export CSV
+                </a>
+                <form action="/reset" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm text-light border-secondary rounded-pill px-3">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                    </button>
+                </form>
+                <a href="/" class="btn btn-outline-secondary btn-sm text-light border-secondary rounded-pill px-3">
+                    <i class="fa-solid fa-house me-1"></i> Home
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 pb-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show rounded-4 mb-4" role="alert">
+                <strong><i class="fa-solid fa-circle-info me-2"></i>{{ message }}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if conflicts %}
+        <div class="p-4 mb-4 conflict-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center mb-1">
+                    <i class="fa-solid fa-triangle-exclamation fs-4 me-2 text-danger"></i>
+                    <h5 class="fw-bold m-0 text-white">Validation & Coverage Conflicts Detected ({{ conflicts|length }})</h5>
+                </div>
+                <ul class="mb-0 ps-4 small" style="max-height: 100px; overflow-y: auto;">
+                    {% for conflict in conflicts %}
+                        <li>{{ conflict }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div>
+                <form action="/apply-fix" method="POST">
+                    <button type="submit" class="btn btn-danger btn-sm fw-bold px-3 rounded-pill shadow-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Auto-Assign Backup Cover
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Navigation Tabs for All 5 Stakeholder Views -->
+        <ul class="nav nav-pills mb-4 flex-wrap gap-2" id="rosterTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="brand-tab" data-bs-toggle="tab" data-bs-target="#brand-view" type="button"><i class="fa-solid fa-shop me-2"></i>Brand Matrix (Company View)</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="pod-tab" data-bs-toggle="tab" data-bs-target="#pod-view" type="button"><i class="fa-solid fa-layer-group me-2"></i>Pod-wise View</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="process-tab" data-bs-toggle="tab" data-bs-target="#process-view" type="button"><i class="fa-solid fa-gears me-2"></i>Process-wise View</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="employee-tab" data-bs-toggle="tab" data-bs-target="#employee-view" type="button"><i class="fa-solid fa-users me-2"></i>Employee-wise View ({{ employees|length }})</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- 1. Brand & Company-wide View -->
+            <div class="tab-pane fade show active" id="brand-view">
+                <div class="card-custom p-0 overflow-hidden">
+                    <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                        <h6 class="text-white m-0 fw-bold"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Monthly Roster Matrix (Full Cycle)</h6>
+                        <form action="/set-month" method="POST" class="d-flex align-items-center gap-2">
+                            <span class="small text-secondary">Cycle Length:</span>
+                            <select name="days" class="form-select form-select-sm bg-dark text-white border-secondary" onchange="this.form.submit()">
+                                <option value="7">7 Days</option>
+                                <option value="15">15 Days</option>
+                                <option value="30" selected>30 Days</option>
+                            </select>
+                        </form>
+                    </div>
+                    <div class="table-responsive" style="max-height: 600px;">
+                        <table class="table table-dark-custom align-middle text-center m-0">
+                            <thead class="sticky-top" style="background: #1e293b; z-index: 3;">
+                                <tr>
+                                    <th class="text-start ps-4">Brand</th>
+                                    <th>Model</th>
+                                    <th>Rule</th>
+                                    {% for d in range(1, 31) %}
+                                    <th class="day-col-{{ d }}">Day {{ d }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in schedule %}
+                                <tr>
+                                    <td class="fw-bold text-start ps-4 text-white text-nowrap">{{ row.brand_name }}</td>
+                                    <td><span class="badge {% if row.type == 'Single-Resource' %}bg-primary{% else %}bg-success{% endif %}">{{ row.type }}</span></td>
+                                    <td><span class="badge bg-dark border border-secondary text-light">{{ row.rule }}</span></td>
+                                    {% for d in range(1, 31) %}
+                                    <td class="small text-nowrap day-col-{{ d }} {% if 'Unstaffed' in row.daily_status.get(d, '') or 'Partial' in row.daily_status.get(d, '') %}text-danger fw-bold{% endif %}">
+                                        {{ row.daily_status.get(d, '-') }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Pod-wise View -->
+            <div class="tab-pane fade" id="pod-view">
+                <div class="row g-3">
+                    {% for pod_name, members in pods.items() %}
+                    <div class="col-md-4">
+                        <div class="card-custom p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-white m-0"><i class="fa-solid fa-folder me-2 text-primary"></i>{{ pod_name }}</h6>
+                                <span class="badge bg-secondary rounded-pill">{{ members|length }} Members</span>
+                            </div>
+                            <div class="list-group list-group-flush border-0">
+                                {% for m in members %}
+                                <div class="list-group-item bg-transparent text-secondary border-0 px-0 d-flex justify-content-between align-items-center small py-1">
+                                    <span class="text-light">{{ m.name }}</span>
+                                    <span class="badge {% if m.role == 'Pod Lead' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ m.role }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 3. Process-wise View -->
+            <div class="tab-pane fade" id="process-view">
+                <div class="row g-3">
+                    {% for proc_name, entries in process_data.items() %}
+                    <div class="col-md-6">
+                        <div class="card-custom p-3 h-100">
+                            <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-gear text-info me-2"></i>Process: {{ proc_name }}</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark-custom align-middle m-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Brand</th>
+                                            <th>Operating Rule</th>
+                                            <th>Assigned Resources</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in entries %}
+                                        <tr>
+                                            <td class="fw-bold text-white">{{ entry.brand_name }}</td>
+                                            <td><span class="badge bg-secondary">{{ entry.rule }}</span></td>
+                                            <td class="small text-info">{{ entry.assigned }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 4. Employee-wise View -->
+            <div class="tab-pane fade" id="employee-view">
+                <div class="card-custom p-3">
+                    <h5 class="fw-bold text-white mb-3"><i class="fa-solid fa-users text-warning me-2"></i>Individual Employee Schedules & Leave Logs</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark-custom align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Pod</th>
+                                    <th>Role</th>
+                                    <th>Assigned Portfolio / Brand</th>
+                                    <th>Approved Leave Days</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in employee_data %}
+                                <tr>
+                                    <td class="text-secondary">#{{ emp.id }}</td>
+                                    <td class="fw-bold text-white">{{ emp.name }}</td>
+                                    <td><span class="badge bg-dark border border-secondary">{{ emp.pod }}</span></td>
+                                    <td><span class="badge {% if emp.role == 'Pod Lead' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ emp.role }}</span></td>
+                                    <td class="small text-info">{{ emp.assigned_brands }}</td>
+                                    <td>
+                                        {% if emp.leaves %}
+                                            {% for l_day in emp.leaves %}
+                                                <span class="badge bg-danger">Day {{ l_day }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-secondary small">No leaves</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="leaveModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-calendar-plus text-primary me-2"></i>Simulate Leave Request</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/request-leave" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Select Employee</label>
+                            <select name="emp_id" class="form-select" required>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.pod }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Select Day of Month (1 - 30)</label>
+                            <input type="number" name="day" class="form-control" min="1" max="30" value="10" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill">Submit Leave</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="manualOverrideModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-sliders text-warning me-2"></i>Manual Coverage Override</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/manual-override" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Select Brand</label>
+                            <select name="brand_id" class="form-select" required>
+                                {% for brand in brands %}
+                                <option value="{{ brand.id }}">{{ brand.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Select Day (1 - 30)</label>
+                            <input type="number" name="day" class="form-control" min="1" max="30" value="10" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Assign Replacement Agent</label>
+                            <select name="replacement_emp_id" class="form-select" required>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.pod }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning btn-sm rounded-pill text-dark fw-bold">Apply Override</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Employee -->
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-info me-2"></i>Add New Employee</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/add-employee" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Full Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Rahul Dravid" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Operational Pod</label>
+                            <select name="pod" class="form-select" required>
+                                <option value="Pod A">Pod A</option>
+                                <option value="Pod B">Pod B</option>
+                                <option value="Pod C">Pod C</option>
+                                <option value="Pod D">Pod D</option>
+                                <option value="Pod E">Pod E</option>
+                                <option value="Pod F">Pod F</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Role</label>
+                            <select name="role" class="form-select" required>
+                                <option value="Agent">Agent</option>
+                                <option value="Pod Lead">Pod Lead</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info btn-sm rounded-pill text-dark fw-bold">Add Employee</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Brand -->
+    <div class="modal fade" id="addBrandModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-store text-secondary me-2"></i>Add New Brand Portfolio</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/add-brand" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Brand Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Nykaa Glow" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Model Type</label>
+                            <select name="type" class="form-select" required>
+                                <option value="Single-Resource">Single-Resource</option>
+                                <option value="Multi-Resource">Multi-Resource</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Process Name</label>
+                            <input type="text" name="process" class="form-control" placeholder="e.g. Customer Support" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Operating Rule</label>
+                            <select name="rule" class="form-select" required>
+                                <option value="365 Days">365 Days</option>
+                                <option value="Mon-Sat">Mon-Sat</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-secondary">Assign Initial Employee</label>
+                            <select name="emp_id" class="form-select" required>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.pod }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-secondary btn-sm rounded-pill text-white fw-bold">Add Brand</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
